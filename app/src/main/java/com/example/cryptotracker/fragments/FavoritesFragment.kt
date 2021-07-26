@@ -1,6 +1,8 @@
 package com.example.cryptotracker.fragments
 
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -47,11 +49,15 @@ class FavoritesFragment : Fragment() {
         adapter = CryptoAdapter(activity)
         binding.favoritesRv.adapter = adapter
 
+        return binding.root
+    }
+
+    override fun onResume() {
+        super.onResume()
+
         val favList = (activity?.application as CryptoApp).cryptoCoinModels
         Log.d("favlist", favList.size.toString())
         adapter.updateData(favList)
-
-        return binding.root
     }
 
     companion object {

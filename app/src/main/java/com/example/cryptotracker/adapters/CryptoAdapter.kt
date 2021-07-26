@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.widget.*
 import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.RecyclerView
+import com.example.cryptotracker.CryptoApp
 import com.example.cryptotracker.R
 import com.example.cryptotracker.models.CryptoCoinModel
 import com.example.cryptotracker.utils.Utils
@@ -51,11 +52,11 @@ class CryptoAdapter(val activity: FragmentActivity?) : RecyclerView.Adapter<Cryp
         viewHolder.priceChange24H.text = Utils.roundTrailingZeros(coin.quote.USD.percent_change_24h)
         viewHolder.priceChange7Day.text = Utils.roundTrailingZeros(coin.quote.USD.percent_change_7d)
 
-        viewHolder.favoriteCheckbox.setOnCheckedChangeListener { buttonView, isChecked ->
-            onChangedListener(buttonView, isChecked, coin.id)
-        }
-
         viewHolder.favoriteCheckbox.isChecked = coin.isFavorited
+
+        viewHolder.favoriteCheckbox.setOnCheckedChangeListener { buttonView, isChecked ->
+            onChangedListener(buttonView, isChecked, coin)
+        }
 
         Picasso.get().load(Utils.buildImageUrl(coin.id))
             .placeholder(R.mipmap.ic_launcher_round)
@@ -63,8 +64,10 @@ class CryptoAdapter(val activity: FragmentActivity?) : RecyclerView.Adapter<Cryp
             .into(viewHolder.coinIcon)
     }
 
-    private fun onChangedListener(view: CompoundButton, checked: Boolean, coinId: String) {
-        cryptoCoinModels[0].isFavorited = checked
+    private fun onChangedListener(view: CompoundButton, checked: Boolean, coin: CryptoCoinModel) {
+        val coinId: String = coin.id
+
+        coin.isFavorited = checked
 
         val sharedPref = activity?.getPreferences(Context.MODE_PRIVATE) ?: return
 
@@ -72,12 +75,14 @@ class CryptoAdapter(val activity: FragmentActivity?) : RecyclerView.Adapter<Cryp
             if (checked) {
                 Log.d("put",  coinId)
                 putString(coinId, coinId)
+
+                (activity?.application as CryptoApp).addItemToList(coin)
             } else {
                 Log.d("removed",  coinId)
-
                 remove(coinId)
+                (activity?.application as CryptoApp).removeItemFromList(coin)
             }
-            apply()
+            commit()
         }
 
     }
