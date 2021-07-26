@@ -1,14 +1,14 @@
 package com.example.cryptotracker.fragments
 
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.cryptotracker.R
+import com.example.cryptotracker.CryptoApp
 import com.example.cryptotracker.adapters.CryptoAdapter
 import com.example.cryptotracker.databinding.FragmentDashboardBinding
 import com.example.cryptotracker.models.CryptoCoinModel
@@ -18,6 +18,7 @@ import com.google.gson.reflect.TypeToken
 import okhttp3.*
 import org.json.JSONObject
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 
 // TODO: Rename parameter arguments, choose names that match
@@ -45,6 +46,11 @@ class DashboardFragment : Fragment() {
     private val request by lazy {
         Request.Builder()
             .url(Constants.apiUrl)
+            .cacheControl(
+                CacheControl.Builder()
+                    .maxAge(1, TimeUnit.DAYS)
+                    .build()
+            )
             .build()
     }
 
@@ -63,7 +69,7 @@ class DashboardFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         binding.cryptoRv.layoutManager = LinearLayoutManager(activity)
-        adapter = CryptoAdapter()
+        adapter = CryptoAdapter(activity)
         binding.cryptoRv.adapter = adapter
 
         getCoins()
@@ -92,9 +98,9 @@ class DashboardFragment : Fragment() {
     }
 
     private fun getCoins() {
-        client.newCall(request).enqueue(object: Callback {
+        client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                Log.println(Log.ERROR, "MainActivity.getCoins","${e.message}")
+                Log.println(Log.ERROR, "MainActivity.getCoins", "${e.message}")
             }
 
             override fun onResponse(call: Call, response: Response) {
@@ -103,16 +109,28 @@ class DashboardFragment : Fragment() {
 
                 val jsonRes = JSONObject(body)
                 val coinsList = jsonRes.getJSONArray("data").toString();
-                val cryptoCoinModels: List<CryptoCoinModel> = gson.fromJson(coinsList, object : TypeToken<List<CryptoCoinModel>>() {}.type)
+                val cryptoCoinModels: List<CryptoCoinModel> =
+                    gson.fromJson(coinsList, object : TypeToken<List<CryptoCoinModel>>() {}.type)
+
+                val sharedPref = activity?.getPreferences(Context.MODE_PRIVATE)
+                Log.d("sharedPrefsss", "${sharedPref?.all?.keys}")
+
+                val cryptoCoinsList: MutableList<CryptoCoinModel> = mutableListOf()
+
+                cryptoCoinModels.forEach { item ->
+                    run {
+                        if (sharedPref?.all?.keys?.contains(item.id) == true) {
+                            item.isFavorited = true
+                            cryptoCoinsList.add(item)
+                        }
+                    }
+                }
+                (activity?.application as CryptoApp).cryptoCoinModels = cryptoCoinsList
 
                 activity?.runOnUiThread(Runnable {
                     adapter.updateData(cryptoCoinModels)
                 })
             }
         })
-    }
-
-    fun onCoinFavoriteClick() {
-        Toast.makeText(context, "CHECKED!!!", Toast.LENGTH_SHORT)
     }
 }
